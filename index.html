@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>தாஸ் ஆல்-இன்-ஒன் சீல் மேக்கர் சாப்ட்வேர்</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: row;
+            background-color: #f0f4f8;
+            margin: 0;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* கட்டுப்பாட்டு பலகை (Left Panel) */
+        .sidebar {
+            width: 360px;
+            background-color: #ffffff;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            z-index: 2;
+        }
+
+        /* பிரிவியூ பகுதி (Right Panel) */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f4f8;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #002060;
+            font-size: 19px;
+            border-bottom: 2px solid #f0f4f8;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .row-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .row-group .form-group {
+            flex: 1;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"], input[type="date"], input[type="file"], select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .btn-print {
+            padding: 12px;
+            background-color: #002060;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 5px;
+            transition: 0.2s;
+        }
+
+        .btn-print:hover {
+            background-color: #00133a;
+        }
+
+        /* ஸ்டாம்ப் பாக்ஸ் அமைப்புகள் */
+        .stamp-container-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.05);
+            min-width: 360px;
+            min-height: 260px;
+        }
+
+        /* செவ்வக சீல் வடிவமைப்பு */
+        .rect-stamp-box {
+            width: 340px;
+            height: 160px;
+            border: 4px solid #002060;
+            box-sizing: border-box;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rect-inner-border {
+            width: 100%;
+            height: 100%;
+            border: 1.5px solid #002060;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 5px;
+        }
+
+        .rect-text-line {
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+        }
+
+        /* வட்ட / ஓவல் தேதி பகுதி */
+        .date-container {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .date-line-top, .date-line-bottom {
+            width: 100%;
+            border-top: 1.5px solid #002060;
+            margin: 2px 0;
+        }
+
+        .date-text {
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #fff;
+            text-align: center;
+            padding: 2px 4px;
+            width: 100%;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+
+        /* பிரிண்ட் ஸ்டைல் */
+        @media print {
+            .sidebar { display: none; }
+            body, .preview-area { background-color: #fff; justify-content: center; }
+            .stamp-container-box { box-shadow: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>ஆல்-இன்-ஒன் சீல் மேக்கர்</h2>
+        
+        <div class="form-group" style="background-color: #eef2f7; padding: 12px; border-radius: 6px;">
+            <label style="color: #002060; font-size: 14px;">சீல் வடிவத்தை தேர்வு செய்யவும்:</label>
+            <select id="stampTypeSelect" style="font-weight: bold; border-color: #002060;">
+                <option value="oval" selected>1. ஓவல் வடிவ சீல் (Oval Stamp)</option>
+                <option value="round">2. ரவுண்டு லோகோ சீல் (Round Logo Stamp)</option>
+                <option value="rectangle">3. செவ்வக வடிவ சீல் (Rectangle Stamp)</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="zoomControlGroup">
+            <label>சீல் மொத்த அளவு (Stamp Zoom):</label>
+            <input type="range" id="stampScaleInput" min="0.6" max="1.6" step="0.05" value="1">
+        </div>
+
+        <div class="form-group">
+            <label id="topTextLabel">மேல் வளைவு உரை:</label>
+            <input type="text" id="topTextInput" value="தாஸ் பொது சேவை மையம்">
+        </div>
+        <div class="row-group">
+            <div class="form-group">
+                <label>எழுத்து அளவு:</label>
+                <input type="range" id="topSizeInput" min="12" max="26" step="0.5" value="16.5">
+            </div>
+            <div class="form-group" id="topPosGroup">
+                <label>மேல்/கீழ் நகர்த்த:</label>
+                <input type="range" id="topPositionInput" min="-15" max="15" step="0.5" value="0">
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 2px 0;">
+
+        <div class="form-group">
+            <label id="bottomTextLabel">கீழ் வளைவு உரை:</label>
+            <input type="text" id="bottomTextInput" value="தூத்துக்குடி">
+        </div>
+        <div class="row-group">
+            <div class="form-group">
+                <label>எழுத்து அளவு:</label>
+                <input type="range" id="bottomSizeInput" min="12" max="26" step="0.5" value="16.5">
+            </div>
+            <div class="form-group" id="bottomPosGroup">
+                <label>மேல்/கீழ் நகர்த்த:</label>
+                <input type="range" id="bottomPositionInput" min="-15" max="15" step="0.5" value="0">
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 2px 0;" id="starHr">
+
+        <div class="form-group" id="logoUploadGroup" style="display: none;">
+            <label>நடுவில் லோகோ பதிவேற்ற (Upload Logo):</label>
+            <input type="file" id="logoUploadInput" accept="image/*">
+            <label style="margin-top: 5px;">லோகோ அளவு (Logo Size):</label>
+            <input type="range" id="logoSizeInput" min="20" max="120" step="1" value="70">
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 2px 0;">
+        </div>
+
+        <div class="form-group" id="starControlGroup">
+            <label>ஸ்டார் (★) இடமாற்றம்:</label>
+            <input type="range" id="starPositionInput" min="10" max="45" step="0.5" value="18">
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 2px 0;">
+        </div>
+
+        <div class="row-group" id="datePickerGroup">
+            <div class="form-group">
+                <label>தேதி (Date):</label>
+                <input type="date" id="datePicker" value="2026-06-11">
+            </div>
+            <div class="form-group">
+                <label>தேதி வடிவம்:</label>
+                <select id="dateFormatInput">
+                    <option value="dash">01-01-2026</option>
+                    <option value="slash">01/01/2026</option>
+                    <option value="text" selected>01 JAN 2026</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row-group">
+            <div class="form-group" id="dateStyleGroup">
+                <label>தேதி வடிவம்:</label>
+                <select id="daterStyleInput">
+                    <option value="lines">கோடுகள்</option>
+                    <option value="box">கட்டம் (Box)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>சீல் நிறம் (Color):</label>
+                <input type="color" id="colorInput" value="#002060" style="border:none; width:100%; height:35px; cursor:pointer;">
+            </div>
+        </div>
+
+        <button class="btn-print" onclick="window.print()">Print Design</button>
+    </div>
+
+    <div class="preview-area">
+        <div class="stamp-container-box" id="stampContainerBox">
+            
+            <svg id="svgStamp" width="340" height="240" viewBox="0 0 340 240" xmlns="http://www.w3.org/2000/svg">
+                <ellipse id="outerShape" cx="170" cy="120" rx="145" ry="95" fill="none" stroke="#002060" stroke-width="4.5"/>
+                <ellipse id="innerShape" cx="170" cy="120" rx="112" ry="65" fill="none" stroke="#002060" stroke-width="1.5"/>
+
+                <defs>
+                    <path id="topCurve" d="M 24,120 A 136,83 0 0,1 316,120" fill="none"/>
+                    <path id="bottomCurve" d="M 28,122 A 132,80 0 0,0 312,122" fill="none"/>
+                </defs>
+
+                <text id="star1" x="18" y="125" font-size="18" fill="#002060" font-weight="bold" text-anchor="middle">★</text>
+                <text id="star2" x="322" y="125" font-size="18" fill="#002060" font-weight="bold" text-anchor="middle">★</text>
+
+                <text id="topTextElement" font-size="16.5" font-weight="bold" fill="#002060" font-family="Arial, sans-serif">
+                    <textPath id="topTextSvg" href="#topCurve" startOffset="50%" text-anchor="middle">தாஸ் பொது சேவை மையம்</textPath>
+                </text>
+                <text id="bottomTextElement" font-size="16.5" font-weight="bold" fill="#002060" font-family="Arial, sans-serif" letter-spacing="2">
+                    <textPath id="bottomTextSvg" href="#bottomCurve" startOffset="50%" text-anchor="middle">தூத்துக்குடி</textPath>
+                </text>
+
+                <image id="stampLogo" x="135" y="85" width="70" height="70" href="" preserveAspectRatio="xMidYMid meet" style="display: none;"/>
+            </svg>
+
+            <div class="date-container" id="ovalDateContainer" style="width: 130px;">
+                <div class="date-line-top" id="lineTop"></div>
+                <div class="date-text" id="stampDate">11 JUN 2026</div>
+                <div class="date-line-bottom" id="lineBottom"></div>
+            </div>
+
+            <div class="rect-stamp-box" id="rectStampBox" style="display: none;">
+                <div class="rect-inner-border" id="rectInnerBox">
+                    <div class="rect-text-line" id="rectTopText" style="font-size: 18px; color: #002060;">தாஸ் பொது சேவை மையம்</div>
+                    <div id="rectDateContainer" style="display: flex; flex-direction: column; align-items: center; width: 140px;">
+                        <div class="date-line-top" id="rectLineTop" style="width: 100%;"></div>
+                        <div class="date-text" id="rectStampDate" style="font-size: 18px; color: #002060;">11 JUN 2026</div>
+                        <div class="date-line-bottom" id="rectLineBottom" style="width: 100%;"></div>
+                    </div>
+                    <div class="rect-text-line" id="rectBottomText" style="font-size: 18px; color: #002060;">தூத்துக்குடி</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // மாஸ்டர் கூறுகள்
+        const stampTypeSelect = document.getElementById('stampTypeSelect');
+        const svgStamp = document.getElementById('svgStamp');
+        const ovalDateContainer = document.getElementById('ovalDateContainer');
+        const rectStampBox = document.getElementById('rectStampBox');
+
+        // கட்டுப்பாட்டு பேனல் கூறுகள்
+        const stampScaleInput = document.getElementById('stampScaleInput');
+        const topTextInput = document.getElementById('topTextInput');
+        const topSizeInput = document.getElementById('topSizeInput');
+        const topPositionInput = document.getElementById('topPositionInput');
+        const bottomTextInput = document.getElementById('bottomTextInput');
+        const bottomSizeInput = document.getElementById('bottomSizeInput');
+        const bottomPositionInput = document.getElementById('bottomPositionInput');
+        const logoUploadInput = document.getElementById('logoUploadInput');
+        const logoSizeInput = document.getElementById('logoSizeInput');
+        const starPositionInput = document.getElementById('starPositionInput');
+        const datePicker = document.getElementById('datePicker');
+        const dateFormatInput = document.getElementById('dateFormatInput');
+        const daterStyleInput = document.getElementById('daterStyleInput');
+        const colorInput = document.getElementById('colorInput');
+
+        // நிபந்தனை குழுக்கள்
+        const zoomControlGroup = document.getElementById('zoomControlGroup');
+        const logoUploadGroup = document.getElementById('logoUploadGroup');
+        const starControlGroup = document.getElementById('starControlGroup');
+        const topPosGroup = document.getElementById('topPosGroup');
+        const bottomPosGroup = document.getElementById('bottomPosGroup');
+        const dateStyleGroup = document.getElementById('dateStyleGroup');
+        const starHr = document.getElementById('starHr');
+
+        // டிசைன் கூறுகள் (வட்டம் / ஓவல்)
+        const outerShape = document.getElementById('outerShape');
+        const innerShape = document.getElementById('innerShape');
+        const topTextSvg = document.getElementById('topTextSvg');
+        const topTextElement = document.getElementById('topTextElement');
+        const bottomTextSvg = document.getElementById('bottomTextSvg');
+        const bottomTextElement = document.getElementById('bottomTextElement');
+        const star1 = document.getElementById('star1');
+        const star2 = document.getElementById('star2');
+        const stampLogo = document.getElementById('stampLogo');
+        const stampDate = document.getElementById('stampDate');
+        const lineTop = document.getElementById('lineTop');
+        const lineBottom = document.getElementById('lineBottom');
+
+        // டிசைன் கூறுகள் (செவ்வகம்)
+        const rectTopText = document.getElementById('rectTopText');
+        const rectBottomText = document.getElementById('rectBottomText');
+        const rectStampDate = document.getElementById('rectStampDate');
+        const rectLineTop = document.getElementById('rectLineTop');
+        const rectLineBottom = document.getElementById('rectLineBottom');
+        const mainBox = document.getElementById('rectStampBox');
+        const innerBox = document.getElementById('rectInnerBox');
+
+        // 1. மெயின் டைப் செலக்டர் லாஜிக் (மாற்றும்போது லேஅவுட் மாறும்)
+        stampTypeSelect.addEventListener('change', (e) => {
+            const type = e.target.value;
+            svgStamp.style.transform = "scale(1)";
+            stampScaleInput.value = 1;
+
+            if (type === 'oval') {
+                svgStamp.style.display = 'block'; ovalDateContainer.style.display = 'flex'; rectStampBox.style.display = 'none';
+                zoomControlGroup.style.display = 'flex'; starControlGroup.style.display = 'flex'; starHr.style.display = 'block';
+                logoUploadGroup.style.display = 'none'; topPosGroup.style.display = 'flex'; bottomPosGroup.style.display = 'flex';
+                stampLogo.style.display = 'none';
+                document.getElementById('topTextLabel').innerText = "மேல் வளைவு உரை:";
+                document.getElementById('bottomTextLabel').innerText = "கீழ் வளைவு உரை:";
+                
+                // ஓவல் அளவு ரீசெட்
+                svgStamp.setAttribute('width', '340'); svgStamp.setAttribute('height', '240'); svgStamp.setAttribute('viewBox', '0 0 340 240');
+                outerShape.setAttribute('cx', '170'); outerShape.setAttribute('cy', '120'); outerShape.setAttribute('rx', '145'); outerShape.setAttribute('ry', '95');
+                innerShape.setAttribute('cx', '170'); innerShape.setAttribute('cy', '120'); innerShape.setAttribute('rx', '112'); innerShape.setAttribute('ry', '65');
+                document.getElementById('topCurve').setAttribute('d', 'M 24,120 A 136,83 0 0,1 316,120');
+                document.getElementById('bottomCurve').setAttribute('d', 'M 28,122 A 132,80 0 0,0 312,122');
+                star1.setAttribute('x', '18'); star1.setAttribute('y', '125'); star2.setAttribute('x', '322'); star2.setAttribute('y', '125');
+                starPositionInput.min = "10"; starPositionInput.max = "45"; starPositionInput.value = "18";
+                ovalDateContainer.style.width = "130px"; ovalDateContainer.style.top = "";
+            } 
+            else if (type === 'round') {
+                svgStamp.style.display = 'block'; ovalDateContainer.style.display = 'none'; rectStampBox.style.display = 'none';
+                zoomControlGroup.style.display = 'flex'; starControlGroup.style.display = 'flex'; starHr.style.display = 'block';
+                logoUploadGroup.style.display = 'flex'; topPosGroup.style.display = 'flex'; bottomPosGroup.style.display = 'flex';
+                stampLogo.style.display = 'block';
+                document.getElementById('topTextLabel').innerText = "மேல் வளைவு உரை:";
+                document.getElementById('bottomTextLabel').innerText = "கீழ் வளைவு உரை:";
+
+                // ரவுண்டு அளவு ரீசெட் (சதுர வடிவம்)
+                svgStamp.setAttribute('width', '250'); svgStamp.setAttribute('height', '250'); svgStamp.setAttribute('viewBox', '0 0 250 250');
+                outerShape.setAttribute('cx', '125'); outerShape.setAttribute('cy', '125'); outerShape.setAttribute('rx', '115'); outerShape.setAttribute('ry', '115');
+                innerShape.setAttribute('cx', '125'); innerShape.setAttribute('cy', '125'); innerShape.setAttribute('rx', '85'); innerShape.setAttribute('ry', '85');
+                document.getElementById('topCurve').setAttribute('d', 'M 18,125 A 107,107 0 0,1 232,125');
+                document.getElementById('bottomCurve').setAttribute('d', 'M 20,125 A 105,105 0 0,0 230,125');
+                star1.setAttribute('x', '20'); star1.setAttribute('y', '130'); star2.setAttribute('x', '230'); star2.setAttribute('y', '130');
+                starPositionInput.min = "10"; starPositionInput.max = "45"; starPositionInput.value = "20";
+            } 
+            else if (type === 'rectangle') {
+                svgStamp.style.display = 'none'; ovalDateContainer.style.display = 'none'; rectStampBox.style.display = 'block';
+                zoomControlGroup.style.display = 'none'; starControlGroup.style.display = 'none'; starHr.style.display = 'none';
+                logoUploadGroup.style.display = 'none'; topPosGroup.style.display = 'none'; bottomPosGroup.style.display = 'none';
+                document.getElementById('topTextLabel').innerText = "மேல் வரிசை உரை:";
+                document.getElementById('bottomTextLabel').innerText = "கீழ் வரிசை உரை:";
+            }
+            updateAllColors();
+            updateDate();
+            triggerInputs();
+        });
+
+        // 2. உரை மற்றும் ஸ்லைடர் செயல்பாடுகள்
+        topTextInput.addEventListener('input', (e) => {
+            topTextSvg.textContent = e.target.value;
+            rectTopText.innerText = e.target.value;
+        });
+        topSizeInput.addEventListener('input', (e) => {
+            topTextElement.setAttribute('font-size', e.target.value);
+            rectTopText.style.fontSize = `${e.target.value}px`;
+        });
+        topPositionInput.addEventListener('input', (e) => {
+            topTextSvg.style.baselineShift = `${-e.target.value}px`;
+        });
+
+        bottomTextInput.addEventListener('input', (e) => {
+            bottomTextSvg.textContent = e.target.value;
+            rectBottomText.innerText = e.target.value;
+        });
+        bottomSizeInput.addEventListener('input', (e) => {
+            bottomTextElement.setAttribute('font-size', e.target.value);
+            rectBottomText.style.fontSize = `${e.target.value}px`;
+        });
+        bottomPositionInput.addEventListener('input', (e) => {
+            bottomTextSvg.style.baselineShift = `${e.target.value}px`;
+        });
+
+        // ஜூம் கண்ட்ரோல்
+        stampScaleInput.addEventListener('input', (e) => {
+            svgStamp.style.transform = `scale(${e.target.value})`;
+            if (stampTypeSelect.value === 'oval') {
+                ovalDateContainer.style.transform = `scale(${e.target.value})`;
+            }
+        });
+
+        // ஸ்டார் நகர்த்தல்
+        starPositionInput.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            const maxW = stampTypeSelect.value === 'oval' ? 340 : 250;
+            star1.setAttribute('x', val);
+            star2.setAttribute('x', maxW - val);
+        });
+
+        // லோகோ அப்லோடு
+        logoUploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) { stampLogo.setAttribute('href', event.target.result); };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        logoSizeInput.addEventListener('input', (e) => {
+            const size = parseFloat(e.target.value);
+            const centerOffset = 125 - (size / 2);
+            stampLogo.setAttribute('width', size);
+            stampLogo.setAttribute('height', size);
+            stampLogo.setAttribute('x', centerOffset);
+            stampLogo.setAttribute('y', centerOffset);
+        });
+
+        // 3. தேதி வடிவமைப்பு லாஜிக்
+        function updateDate() {
+            const dateObj = new Date(datePicker.value);
+            const format = dateFormatInput.value;
+            if (!isNaN(dateObj.getTime())) {
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const monthNum = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const year = dateObj.getFullYear();
+                let formattedDate = "";
+                if (format === 'dash') formattedDate = `${day}-${monthNum}-${year}`;
+                else if (format === 'slash') formattedDate = `${day}/${monthNum}/${year}`;
+                else formattedDate = dateObj.toLocaleDateString('en-US', { day: '2-digit', month: 'SHORT', year: 'numeric' }).toUpperCase().replace(',', '');
+                
+                stampDate.innerText = formattedDate;
+                rectStampDate.innerText = formattedDate;
+            }
+        }
+        datePicker.addEventListener('change', updateDate);
+        dateFormatInput.addEventListener('change', updateDate);
+
+        // தேதி பார்டர் ஸ்டைல்
+        daterStyleInput.addEventListener('change', (e) => {
+            const c = colorInput.value;
+            if (e.target.value === 'box') {
+                stampDate.style.border = `2px dashed ${c}`;
+                rectStampDate.style.border = `2px dashed ${c}`;
+                lineTop.style.display = 'none'; lineBottom.style.display = 'none';
+                rectLineTop.style.display = 'none'; rectLineBottom.style.display = 'none';
+            } else {
+                stampDate.style.border = 'none';
+                rectStampDate.style.border = 'none';
+                lineTop.style.display = 'block'; lineBottom.style.display = 'block';
+                rectLineTop.style.display = 'block'; rectLineBottom.style.display = 'block';
+            }
+        });
+
+        // 4. வண்ண மேலாண்மை (Color Logic)
+        function updateAllColors() {
+            const c = colorInput.value;
+            // எஸ்.வி.ஜி கூறுகள்
+            outerShape.setAttribute('stroke', c); innerShape.setAttribute('stroke', c);
+            star1.setAttribute('fill', c); star2.setAttribute('fill', c);
+            topTextElement.setAttribute('fill', c); bottomTextElement.setAttribute('fill', c);
+            stampDate.style.color = c; lineTop.style.borderTopColor = c; lineBottom.style.borderTopColor = c;
+            
+            // செவ்வக கூறுகள்
+            mainBox.style.borderColor = c; innerBox.style.borderColor = c;
+            rectTopText.style.color = c; rectBottomText.style.color = c;
+            rectStampDate.style.color = c; rectLineTop.style.borderTopColor = c; rectLineBottom.style.borderTopColor = c;
+            
+            if (daterStyleInput.value === 'box') {
+                stampDate.style.border = `2px dashed ${c}`;
+                rectStampDate.style.border = `2px dashed ${c}`;
+            }
+        }
+        colorInput.addEventListener('input', updateAllColors);
+
+        // ஆரம்ப இன்புட்களை தூண்டும் செயல்பாடு
+        function triggerInputs() {
+            topTextSvg.textContent = topTextInput.value;
+            rectTopText.innerText = topTextInput.value;
+            bottomTextSvg.textContent = bottomTextInput.value;
+            rectBottomText.innerText = bottomTextInput.value;
+        }
+
+        // முதல் லோடு செய்தல்
+        updateDate();
+        updateAllColors();
+    </script>
+</body>
+</html>
